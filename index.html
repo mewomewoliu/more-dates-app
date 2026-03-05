@@ -1,0 +1,1841 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Nous — Date Planner</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0F0A08;
+            --surface: #1A120E;
+            --surface-2: #241A15;
+            --surface-3: #2E2219;
+            --border: rgba(232, 180, 130, 0.12);
+            --border-bright: rgba(232, 180, 130, 0.3);
+            --accent: #E8956D;
+            --accent-dim: rgba(232, 149, 109, 0.12);
+            --accent-2: #C4A882;
+            --sage: #8BAF9E;
+            --sage-dim: rgba(139, 175, 158, 0.15);
+            --text: #F0E6D6;
+            --text-muted: #8A7868;
+            --text-dim: #5A4A3C;
+            --radius: 16px;
+            --radius-sm: 10px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body {
+            background: #07060A;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'DM Sans', sans-serif;
+        }
+
+        .phone {
+            width: 375px;
+            height: 812px;
+            background: var(--bg);
+            border-radius: 50px;
+            overflow: hidden;
+            position: relative;
+            box-shadow:
+                0 0 0 1px rgba(255,255,255,0.05),
+                0 40px 120px rgba(0,0,0,0.85),
+                inset 0 1px 0 rgba(255,255,255,0.07);
+        }
+
+        /* Grain overlay */
+        .phone::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+            pointer-events: none;
+            z-index: 999;
+            opacity: 0.5;
+            border-radius: 50px;
+        }
+
+        /* Status bar */
+        .status-bar {
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 28px;
+            position: relative;
+            z-index: 10;
+            flex-shrink: 0;
+        }
+
+        .status-time {
+            font-size: 15px;
+            font-weight: 500;
+            color: var(--text);
+            letter-spacing: -0.3px;
+        }
+
+        .status-icons {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .status-icons svg { fill: var(--text); }
+
+        /* Main layout */
+        .app {
+            height: calc(812px - 44px - 82px);
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Pages */
+        .page {
+            position: absolute;
+            inset: 0;
+            overflow-y: auto;
+            overflow-x: hidden;
+            opacity: 0;
+            transform: translateX(16px);
+            transition: opacity 0.28s ease, transform 0.28s ease;
+            pointer-events: none;
+            scrollbar-width: none;
+        }
+
+        .page::-webkit-scrollbar { display: none; }
+
+        .page.active {
+            opacity: 1;
+            transform: translateX(0);
+            pointer-events: all;
+        }
+
+        /* Tab bar */
+        .tab-bar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 82px;
+            background: rgba(12, 8, 6, 0.96);
+            backdrop-filter: blur(24px);
+            border-top: 1px solid var(--border);
+            display: flex;
+            align-items: flex-start;
+            padding-top: 10px;
+            z-index: 50;
+        }
+
+        .tab {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+            padding: 8px 4px;
+            position: relative;
+        }
+
+        .tab-icon {
+            width: 26px;
+            height: 26px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            transition: transform 0.2s ease;
+        }
+
+        .tab-label {
+            font-size: 10px;
+            font-weight: 500;
+            letter-spacing: 0.6px;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            transition: color 0.2s ease;
+        }
+
+        .tab.active .tab-label { color: var(--accent); }
+        .tab.active .tab-icon { transform: translateY(-2px); }
+
+        .tab-notif {
+            position: absolute;
+            top: 6px;
+            right: 30px;
+            width: 7px;
+            height: 7px;
+            background: var(--accent);
+            border-radius: 50%;
+            border: 1.5px solid var(--bg);
+            display: none;
+        }
+
+        .tab.has-notif .tab-notif { display: block; }
+
+        /* ==================
+           PAGE: OVERVIEW
+        ================== */
+
+        .overview-hero {
+            background: linear-gradient(180deg, #1E1410 0%, var(--bg) 100%);
+            padding: 28px 24px 24px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .overview-hero::before {
+            content: '';
+            position: absolute;
+            top: -80px;
+            right: -60px;
+            width: 240px;
+            height: 240px;
+            background: radial-gradient(circle, rgba(232, 149, 109, 0.07) 0%, transparent 65%);
+            pointer-events: none;
+        }
+
+        .app-eyebrow {
+            font-size: 11px;
+            letter-spacing: 2.5px;
+            text-transform: uppercase;
+            color: var(--accent);
+            font-weight: 500;
+            margin-bottom: 6px;
+        }
+
+        .date-title {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 40px;
+            font-weight: 300;
+            color: var(--text);
+            line-height: 1.08;
+            letter-spacing: -1px;
+            margin-bottom: 22px;
+        }
+
+        .date-title em {
+            font-style: italic;
+            color: var(--accent);
+        }
+
+        .planners-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .planner-avatars { display: flex; }
+
+        .avatar {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            border: 2px solid var(--bg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 600;
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .avatar:not(:first-child) { margin-left: -12px; }
+
+        .avatar-a { background: linear-gradient(135deg, #E8956D, #C4622D); color: white; }
+        .avatar-b { background: linear-gradient(135deg, #8BAF9E, #5A8F7A); color: white; }
+
+        .online-dot {
+            position: absolute;
+            bottom: 1px;
+            right: 1px;
+            width: 9px;
+            height: 9px;
+            background: #4CAF82;
+            border: 2px solid var(--bg);
+            border-radius: 50%;
+        }
+
+        .planner-meta { flex: 1; }
+
+        .planner-names {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text);
+        }
+
+        .planner-status {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .live-badge {
+            background: rgba(76, 175, 130, 0.12);
+            color: #4CAF82;
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            border: 1px solid rgba(76, 175, 130, 0.25);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            flex-shrink: 0;
+        }
+
+        .live-pulse {
+            width: 6px;
+            height: 6px;
+            background: #4CAF82;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(0.75); }
+        }
+
+        /* Share button */
+        .share-header-btn {
+            position: absolute;
+            top: 32px;
+            right: 24px;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 8px 14px;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-muted);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+            font-family: 'DM Sans', sans-serif;
+            z-index: 5;
+        }
+
+        .share-header-btn:active {
+            background: var(--accent-dim);
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        /* Progress card */
+        .progress-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+            margin: 0 24px 20px;
+        }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 14px;
+        }
+
+        .progress-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .progress-pct {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 24px;
+            color: var(--accent);
+            font-weight: 400;
+        }
+
+        .progress-track {
+            height: 2px;
+            background: var(--surface-3);
+            border-radius: 2px;
+            margin-bottom: 18px;
+        }
+
+        .progress-fill {
+            height: 2px;
+            background: linear-gradient(90deg, var(--accent), #C4A882);
+            border-radius: 2px;
+            width: 0%;
+            transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .progress-items {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 6px;
+        }
+
+        .prog-item { display: flex; flex-direction: column; gap: 4px; }
+
+        .prog-item-label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--text-dim);
+        }
+
+        .prog-item-val {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-muted);
+        }
+
+        .prog-item-val.done { color: var(--sage); }
+
+        /* Section label */
+        .section-label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--text-dim);
+            font-weight: 500;
+            padding: 0 24px;
+            margin-bottom: 12px;
+        }
+
+        /* Summary cards (horizontal scroll) */
+        .summary-cards {
+            display: flex;
+            gap: 10px;
+            padding: 0 24px;
+            margin-bottom: 24px;
+            overflow-x: auto;
+            scrollbar-width: none;
+        }
+
+        .summary-cards::-webkit-scrollbar { display: none; }
+
+        .summary-card {
+            flex-shrink: 0;
+            width: 138px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 16px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .summary-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, var(--accent-dim), transparent);
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .summary-card:active::before { opacity: 1; }
+
+        .sc-icon {
+            font-size: 22px;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .sc-category {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-dim);
+            margin-bottom: 5px;
+        }
+
+        .sc-value {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text);
+            line-height: 1.3;
+        }
+
+        .sc-sub {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 3px;
+        }
+
+        /* Activity feed */
+        .feed-section { padding: 0 24px 24px; }
+
+        .typing-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 0;
+            font-size: 11px;
+            color: var(--text-dim);
+        }
+
+        .typing-dots { display: flex; gap: 3px; align-items: center; }
+
+        .typing-dot {
+            width: 4px;
+            height: 4px;
+            background: var(--text-dim);
+            border-radius: 50%;
+            animation: typingBounce 1.4s infinite;
+        }
+
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes typingBounce {
+            0%, 80%, 100% { transform: translateY(0); opacity: 0.35; }
+            40% { transform: translateY(-4px); opacity: 1; }
+        }
+
+        .feed-item {
+            display: flex;
+            gap: 12px;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+            align-items: flex-start;
+        }
+
+        .feed-item:last-child { border-bottom: none; }
+
+        .feed-avatar {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 700;
+            color: white;
+        }
+
+        .feed-text {
+            font-size: 13px;
+            color: var(--text);
+            line-height: 1.45;
+            flex: 1;
+        }
+
+        .feed-text strong { color: var(--accent); font-weight: 500; }
+
+        .feed-time {
+            font-size: 11px;
+            color: var(--text-dim);
+            margin-top: 3px;
+        }
+
+        /* ==================
+           PAGE: WHEN
+        ================== */
+
+        .page-header {
+            padding: 28px 24px 22px;
+        }
+
+        .page-eyebrow {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--accent);
+            margin-bottom: 6px;
+            font-weight: 500;
+        }
+
+        .page-title {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 34px;
+            font-weight: 300;
+            color: var(--text);
+            line-height: 1.1;
+            letter-spacing: -0.5px;
+        }
+
+        /* Calendar */
+        .calendar-wrap {
+            margin: 0 24px 22px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+        }
+
+        .cal-nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 18px;
+        }
+
+        .cal-month {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 20px;
+            font-weight: 500;
+            color: var(--text);
+        }
+
+        .cal-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            line-height: 1;
+            transition: all 0.2s ease;
+            font-family: inherit;
+        }
+
+        .cal-btn:hover {
+            background: var(--accent-dim);
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .cal-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 3px;
+        }
+
+        .cal-day-label {
+            text-align: center;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-dim);
+            padding: 4px 0 8px;
+            font-weight: 500;
+        }
+
+        .cal-day {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            font-size: 13px;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.15s ease;
+            position: relative;
+        }
+
+        .cal-day:hover:not(.empty):not(.past) {
+            background: var(--surface-2);
+            color: var(--text);
+        }
+
+        .cal-day.today {
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        .cal-day.today::after {
+            content: '';
+            position: absolute;
+            bottom: 3px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 4px;
+            height: 4px;
+            background: var(--accent);
+            border-radius: 50%;
+        }
+
+        .cal-day.selected {
+            background: var(--accent);
+            color: white;
+            font-weight: 600;
+        }
+
+        .cal-day.selected::after { display: none; }
+
+        .cal-day.partner-vote {
+            background: var(--sage-dim);
+            color: var(--sage);
+        }
+
+        .cal-day.past {
+            color: var(--text-dim);
+            pointer-events: none;
+        }
+
+        .cal-day.empty { pointer-events: none; }
+
+        /* Calendar legend */
+        .cal-legend {
+            display: flex;
+            gap: 16px;
+            margin-top: 14px;
+            padding-top: 14px;
+            border-top: 1px solid var(--border);
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .legend-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 3px;
+        }
+
+        .legend-dot-you { background: var(--accent); }
+        .legend-dot-partner { background: var(--sage); }
+
+        /* Time grid */
+        .time-section { margin: 0 24px 24px; }
+
+        .time-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .time-slot {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 14px 16px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .time-slot.selected {
+            border-color: var(--accent);
+            background: var(--accent-dim);
+        }
+
+        .time-slot-name {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text);
+            margin-bottom: 3px;
+        }
+
+        .time-slot.selected .time-slot-name { color: var(--accent); }
+
+        .time-slot-range {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .time-slot-votes {
+            position: absolute;
+            top: 10px;
+            right: 12px;
+            font-size: 11px;
+            color: var(--text-dim);
+        }
+
+        /* ==================
+           PAGE: WHERE
+        ================== */
+
+        .location-card {
+            margin: 0 24px 12px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+            cursor: pointer;
+            transition: transform 0.15s ease;
+        }
+
+        .location-card:active { transform: scale(0.98); }
+
+        .location-img {
+            height: 110px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .location-img-bg {
+            position: absolute;
+            inset: 0;
+            opacity: 0.18;
+        }
+
+        .location-body { padding: 16px; }
+
+        .location-name {
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--text);
+            margin-bottom: 4px;
+        }
+
+        .location-meta {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 14px;
+        }
+
+        .location-actions {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .vote-buttons { display: flex; gap: 8px; }
+
+        .vote-btn {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 7px 12px;
+            font-size: 12px;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: 'DM Sans', sans-serif;
+            font-weight: 400;
+        }
+
+        .vote-btn.yes {
+            background: var(--sage-dim);
+            border-color: var(--sage);
+            color: var(--sage);
+        }
+
+        .vote-btn.no {
+            background: rgba(200, 80, 80, 0.1);
+            border-color: rgba(200, 80, 80, 0.3);
+            color: #C85050;
+        }
+
+        .added-by {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            color: var(--text-dim);
+        }
+
+        .added-avatar {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 8px;
+            color: white;
+            font-weight: 700;
+        }
+
+        /* Add button */
+        .add-btn {
+            margin: 0 24px 24px;
+            height: 50px;
+            border: 1.5px dashed var(--border-bright);
+            border-radius: var(--radius);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            color: var(--text-muted);
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: transparent;
+            width: calc(100% - 48px);
+            font-family: 'DM Sans', sans-serif;
+        }
+
+        .add-btn:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+            background: var(--accent-dim);
+        }
+
+        /* ==================
+           PAGE: WHAT
+        ================== */
+
+        .cat-filter {
+            display: flex;
+            gap: 8px;
+            padding: 0 24px;
+            margin-bottom: 16px;
+            overflow-x: auto;
+            scrollbar-width: none;
+        }
+
+        .cat-filter::-webkit-scrollbar { display: none; }
+
+        .cat-chip {
+            flex-shrink: 0;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 7px 14px;
+            font-size: 12px;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .cat-chip.active {
+            background: var(--accent-dim);
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .activity-item {
+            margin: 0 24px 10px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 14px 16px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            transition: all 0.2s ease;
+        }
+
+        .activity-item.proposed {
+            border-style: dashed;
+            border-color: rgba(232, 180, 130, 0.25);
+        }
+
+        .activity-emoji {
+            font-size: 20px;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--surface-2);
+            border-radius: 10px;
+            flex-shrink: 0;
+        }
+
+        .activity-body { flex: 1; min-width: 0; }
+
+        .activity-name {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text);
+            margin-bottom: 3px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .activity-meta {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .activity-right {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+
+        .heart-btn {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 12px;
+            color: var(--text-dim);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: none;
+            border: none;
+            font-family: 'DM Sans', sans-serif;
+            padding: 3px;
+        }
+
+        .heart-btn.liked { color: #E8506D; }
+        .heart-btn:active { transform: scale(1.3); }
+
+        .check-circle {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            border: 1.5px solid var(--border-bright);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .check-circle.checked {
+            background: var(--sage);
+            border-color: var(--sage);
+        }
+
+        .check-circle.checked::after {
+            content: '✓';
+            color: white;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        /* ==================
+           MODALS & SHEETS
+        ================== */
+
+        .modal-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0,0,0,0.72);
+            backdrop-filter: blur(6px);
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .modal-overlay.open { opacity: 1; pointer-events: all; }
+
+        .bottom-sheet {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--surface);
+            border-radius: 24px 24px 0 0;
+            border-top: 1px solid var(--border);
+            padding: 20px 24px 44px;
+            transform: translateY(100%);
+            transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+            z-index: 101;
+        }
+
+        .bottom-sheet.open { transform: translateY(0); }
+
+        .sheet-handle {
+            width: 36px;
+            height: 4px;
+            background: var(--surface-3);
+            border-radius: 2px;
+            margin: 0 auto 22px;
+        }
+
+        .sheet-title {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 28px;
+            font-weight: 400;
+            color: var(--text);
+            margin-bottom: 20px;
+        }
+
+        /* Share sheet */
+        .share-link-box {
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 14px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .share-link-url {
+            flex: 1;
+            font-size: 12px;
+            color: var(--text-muted);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .copy-btn {
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 8px 14px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            font-family: 'DM Sans', sans-serif;
+            transition: all 0.15s ease;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .copy-btn:active { transform: scale(0.95); }
+
+        .share-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .share-opt {
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .share-opt:active {
+            background: var(--accent-dim);
+            border-color: var(--accent);
+        }
+
+        .share-opt-icon { font-size: 20px; }
+
+        .share-opt-name {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text);
+        }
+
+        .share-note {
+            text-align: center;
+            font-size: 11px;
+            color: var(--text-dim);
+        }
+
+        /* Input & button */
+        .input-field {
+            width: 100%;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 14px 16px;
+            font-size: 14px;
+            color: var(--text);
+            font-family: 'DM Sans', sans-serif;
+            margin-bottom: 12px;
+            outline: none;
+            transition: border-color 0.2s ease;
+        }
+
+        .input-field:focus { border-color: var(--accent); }
+        .input-field::placeholder { color: var(--text-dim); }
+
+        .btn-primary {
+            width: 100%;
+            background: linear-gradient(135deg, var(--accent), #C4622D);
+            border: none;
+            border-radius: var(--radius-sm);
+            padding: 16px;
+            font-size: 15px;
+            font-weight: 500;
+            color: white;
+            cursor: pointer;
+            font-family: 'DM Sans', sans-serif;
+            transition: all 0.15s ease;
+        }
+
+        .btn-primary:active { transform: scale(0.98); }
+
+        /* Toast */
+        .toast {
+            position: absolute;
+            top: 56px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-16px);
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 10px 18px;
+            font-size: 13px;
+            color: var(--text);
+            white-space: nowrap;
+            z-index: 200;
+            opacity: 0;
+            transition: all 0.28s ease;
+            pointer-events: none;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* Animations */
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(14px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .page.active > * {
+            animation: fadeUp 0.35s ease forwards;
+        }
+
+        .page.active > *:nth-child(2) { animation-delay: 0.04s; }
+        .page.active > *:nth-child(3) { animation-delay: 0.08s; }
+        .page.active > *:nth-child(4) { animation-delay: 0.12s; }
+        .page.active > *:nth-child(5) { animation-delay: 0.16s; }
+        .page.active > *:nth-child(6) { animation-delay: 0.20s; }
+
+        .pad-bottom { height: 24px; }
+    </style>
+</head>
+<body>
+    <div class="phone">
+        <!-- Status Bar -->
+        <div class="status-bar">
+            <span class="status-time">9:41</span>
+            <div class="status-icons">
+                <svg width="17" height="12" viewBox="0 0 17 12" opacity="0.9">
+                    <rect x="0" y="4" width="3" height="8" rx="1" opacity="0.35"/>
+                    <rect x="4.5" y="2.5" width="3" height="9.5" rx="1" opacity="0.6"/>
+                    <rect x="9" y="0.5" width="3" height="11.5" rx="1"/>
+                    <rect x="13.5" y="0" width="3" height="12" rx="1"/>
+                </svg>
+                <svg width="16" height="12" viewBox="0 0 16 12" opacity="0.9">
+                    <path d="M8 3C9.7 3 11.2 3.7 12.3 4.8L13.7 3.4C12.2 1.9 10.2 1 8 1C5.8 1 3.8 1.9 2.3 3.4L3.7 4.8C4.8 3.7 6.3 3 8 3Z" opacity="0.4"/>
+                    <path d="M8 6C9.1 6 10 6.4 10.6 7.1L12 5.7C11 4.7 9.6 4 8 4C6.4 4 5 4.7 4 5.7L5.4 7.1C6 6.4 6.9 6 8 6Z"/>
+                    <circle cx="8" cy="10" r="1.5"/>
+                </svg>
+                <svg width="26" height="12" viewBox="0 0 26 12" opacity="0.9">
+                    <rect x="0.5" y="0.5" width="22" height="11" rx="3.5" stroke="white" stroke-width="1" fill="none" opacity="0.4"/>
+                    <rect x="23" y="3.5" width="2.5" height="5" rx="1.5" fill="white" opacity="0.4"/>
+                    <rect x="2" y="2" width="17" height="8" rx="2" fill="white"/>
+                </svg>
+            </div>
+        </div>
+
+        <!-- App Container -->
+        <div class="app">
+
+            <!-- ==================
+                 PAGE: OVERVIEW
+            ================== -->
+            <div class="page active" id="page-overview">
+                <div class="overview-hero">
+                    <div class="app-eyebrow">Planning together</div>
+                    <div class="date-title">Our <em>perfect</em><br>spring date</div>
+                    <div class="planners-row">
+                        <div class="planner-avatars">
+                            <div class="avatar avatar-a">M<div class="online-dot"></div></div>
+                            <div class="avatar avatar-b">J</div>
+                        </div>
+                        <div class="planner-meta">
+                            <div class="planner-names">Mia &amp; Jamie</div>
+                            <div class="planner-status">Planning since yesterday</div>
+                        </div>
+                        <div class="live-badge">
+                            <div class="live-pulse"></div>
+                            Live
+                        </div>
+                    </div>
+                </div>
+
+                <button class="share-header-btn" onclick="openShare()">
+                    <span>&#128279;</span> Share
+                </button>
+
+                <div class="progress-card">
+                    <div class="progress-header">
+                        <span class="progress-label">Plan complete</span>
+                        <span class="progress-pct">55%</span>
+                    </div>
+                    <div class="progress-track">
+                        <div class="progress-fill" id="progress-fill"></div>
+                    </div>
+                    <div class="progress-items">
+                        <div class="prog-item">
+                            <div class="prog-item-label">When</div>
+                            <div class="prog-item-val done">Mar 22</div>
+                        </div>
+                        <div class="prog-item">
+                            <div class="prog-item-label">Where</div>
+                            <div class="prog-item-val">Voting...</div>
+                        </div>
+                        <div class="prog-item">
+                            <div class="prog-item-label">Activities</div>
+                            <div class="prog-item-val">3 ideas</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section-label">Quick view</div>
+                <div class="summary-cards">
+                    <div class="summary-card" onclick="switchTab('when')">
+                        <span class="sc-icon">&#128197;</span>
+                        <div class="sc-category">Date &amp; Time</div>
+                        <div class="sc-value">Sat, Mar 22</div>
+                        <div class="sc-sub">Evening &#10003; agreed</div>
+                    </div>
+                    <div class="summary-card" onclick="switchTab('where')">
+                        <span class="sc-icon">&#128205;</span>
+                        <div class="sc-category">Location</div>
+                        <div class="sc-value">Still deciding</div>
+                        <div class="sc-sub">2 options, vote!</div>
+                    </div>
+                    <div class="summary-card" onclick="switchTab('what')">
+                        <span class="sc-icon">&#10024;</span>
+                        <div class="sc-category">Activities</div>
+                        <div class="sc-value">3 planned</div>
+                        <div class="sc-sub">1 more proposed</div>
+                    </div>
+                </div>
+
+                <div class="section-label">Recent activity</div>
+                <div class="feed-section">
+                    <div class="typing-row">
+                        <div class="typing-dots">
+                            <div class="typing-dot"></div>
+                            <div class="typing-dot"></div>
+                            <div class="typing-dot"></div>
+                        </div>
+                        Jamie is adding something&hellip;
+                    </div>
+                    <div class="feed-item">
+                        <div class="feed-avatar" style="background: linear-gradient(135deg, #8BAF9E, #5A8F7A);">J</div>
+                        <div style="flex:1">
+                            <div class="feed-text"><strong>Jamie</strong> voted &#10084;&#65039; for Rooftop Bar</div>
+                            <div class="feed-time">2 min ago</div>
+                        </div>
+                    </div>
+                    <div class="feed-item">
+                        <div class="feed-avatar" style="background: linear-gradient(135deg, #E8956D, #C4622D);">M</div>
+                        <div style="flex:1">
+                            <div class="feed-text"><strong>You</strong> added "Sunset walk in the park" to activities</div>
+                            <div class="feed-time">15 min ago</div>
+                        </div>
+                    </div>
+                    <div class="feed-item">
+                        <div class="feed-avatar" style="background: linear-gradient(135deg, #8BAF9E, #5A8F7A);">J</div>
+                        <div style="flex:1">
+                            <div class="feed-text"><strong>Jamie</strong> confirmed Saturday evening works</div>
+                            <div class="feed-time">1 hr ago</div>
+                        </div>
+                    </div>
+                    <div class="feed-item">
+                        <div class="feed-avatar" style="background: linear-gradient(135deg, #E8956D, #C4622D);">M</div>
+                        <div style="flex:1">
+                            <div class="feed-text"><strong>You</strong> created this date plan &#10024;</div>
+                            <div class="feed-time">Yesterday</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="pad-bottom"></div>
+            </div>
+
+            <!-- ==================
+                 PAGE: WHEN
+            ================== -->
+            <div class="page" id="page-when">
+                <div class="page-header">
+                    <div class="page-eyebrow">Step 1</div>
+                    <div class="page-title">When are<br>you free?</div>
+                </div>
+
+                <div class="calendar-wrap">
+                    <div class="cal-nav">
+                        <button class="cal-btn" onclick="prevMonth()">&#8249;</button>
+                        <div class="cal-month" id="cal-month-label">March 2026</div>
+                        <button class="cal-btn" onclick="nextMonth()">&#8250;</button>
+                    </div>
+                    <div class="cal-grid" id="cal-grid"></div>
+                    <div class="cal-legend">
+                        <div class="legend-item">
+                            <div class="legend-dot legend-dot-you"></div>
+                            Your pick
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-dot legend-dot-partner"></div>
+                            Jamie's votes
+                        </div>
+                    </div>
+                </div>
+
+                <div class="time-section">
+                    <div class="section-label">What time?</div>
+                    <div class="time-grid">
+                        <div class="time-slot" onclick="selectTime(this)">
+                            <div class="time-slot-name">&#9728;&#65039; Afternoon</div>
+                            <div class="time-slot-range">12pm – 5pm</div>
+                            <div class="time-slot-votes">1 vote</div>
+                        </div>
+                        <div class="time-slot selected" onclick="selectTime(this)">
+                            <div class="time-slot-name">&#127748; Evening</div>
+                            <div class="time-slot-range">5pm – 9pm</div>
+                            <div class="time-slot-votes">2 votes</div>
+                        </div>
+                        <div class="time-slot" onclick="selectTime(this)">
+                            <div class="time-slot-name">&#127769; Night</div>
+                            <div class="time-slot-range">9pm – midnight</div>
+                            <div class="time-slot-votes">0 votes</div>
+                        </div>
+                        <div class="time-slot" onclick="selectTime(this)">
+                            <div class="time-slot-name">&#127745; All day</div>
+                            <div class="time-slot-range">Flexible</div>
+                            <div class="time-slot-votes">1 vote</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="pad-bottom"></div>
+            </div>
+
+            <!-- ==================
+                 PAGE: WHERE
+            ================== -->
+            <div class="page" id="page-where">
+                <div class="page-header">
+                    <div class="page-eyebrow">Step 2</div>
+                    <div class="page-title">Where<br>to go?</div>
+                </div>
+
+                <div class="location-card">
+                    <div class="location-img">
+                        <div class="location-img-bg" style="background: linear-gradient(135deg, #E8956D, #C4622D);"></div>
+                        &#127863;
+                    </div>
+                    <div class="location-body">
+                        <div class="location-name">Rooftop Wine Bar</div>
+                        <div class="location-meta">Sky District &middot; 0.8 mi &middot; $$$ &middot; Great views</div>
+                        <div class="location-actions">
+                            <div class="vote-buttons">
+                                <button class="vote-btn yes" onclick="voteLocation(this,'yes')">&#10084;&#65039; Yes <span>2</span></button>
+                                <button class="vote-btn" onclick="voteLocation(this,'no')">&#10005; Pass</button>
+                            </div>
+                            <div class="added-by">
+                                <div class="added-avatar" style="background: linear-gradient(135deg, #8BAF9E, #5A8F7A);">J</div>
+                                Jamie
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="location-card">
+                    <div class="location-img">
+                        <div class="location-img-bg" style="background: linear-gradient(135deg, #8BAF9E, #3D7A62);"></div>
+                        &#127807;
+                    </div>
+                    <div class="location-body">
+                        <div class="location-name">Botanical Garden Cafe</div>
+                        <div class="location-meta">Eastside &middot; 1.2 mi &middot; $$ &middot; Scenic &amp; peaceful</div>
+                        <div class="location-actions">
+                            <div class="vote-buttons">
+                                <button class="vote-btn" onclick="voteLocation(this,'yes')">&#10084;&#65039; Yes <span>1</span></button>
+                                <button class="vote-btn no" onclick="voteLocation(this,'no')">&#10005; Pass</button>
+                            </div>
+                            <div class="added-by">
+                                <div class="added-avatar" style="background: linear-gradient(135deg, #E8956D, #C4622D);">M</div>
+                                You
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="location-card">
+                    <div class="location-img">
+                        <div class="location-img-bg" style="background: linear-gradient(135deg, #C4A882, #8B7355);"></div>
+                        &#127836;
+                    </div>
+                    <div class="location-body">
+                        <div class="location-name">Izakaya Noma</div>
+                        <div class="location-meta">Midtown &middot; 0.4 mi &middot; $$ &middot; Intimate &amp; cozy</div>
+                        <div class="location-actions">
+                            <div class="vote-buttons">
+                                <button class="vote-btn" onclick="voteLocation(this,'yes')">&#10084;&#65039; Yes <span>0</span></button>
+                                <button class="vote-btn" onclick="voteLocation(this,'no')">&#10005; Pass</button>
+                            </div>
+                            <div class="added-by">
+                                <div class="added-avatar" style="background: linear-gradient(135deg, #8BAF9E, #5A8F7A);">J</div>
+                                Jamie
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="add-btn" onclick="openAddLocation()">+ Suggest a place</button>
+                <div class="pad-bottom"></div>
+            </div>
+
+            <!-- ==================
+                 PAGE: WHAT
+            ================== -->
+            <div class="page" id="page-what">
+                <div class="page-header">
+                    <div class="page-eyebrow">Step 3</div>
+                    <div class="page-title">What to<br>do together?</div>
+                </div>
+
+                <div class="cat-filter">
+                    <div class="cat-chip active" onclick="filterCat(this)">All</div>
+                    <div class="cat-chip" onclick="filterCat(this)">&#127374; Food</div>
+                    <div class="cat-chip" onclick="filterCat(this)">&#127807; Outdoors</div>
+                    <div class="cat-chip" onclick="filterCat(this)">&#127914; Culture</div>
+                    <div class="cat-chip" onclick="filterCat(this)">&#127922; Fun</div>
+                </div>
+
+                <div class="activity-item">
+                    <div class="activity-emoji">&#127749;</div>
+                    <div class="activity-body">
+                        <div class="activity-name">Sunset walk in the park</div>
+                        <div class="activity-meta">Added by you &middot; Outdoors</div>
+                    </div>
+                    <div class="activity-right">
+                        <button class="heart-btn liked" onclick="toggleHeart(this)">&#10084;&#65039; 2</button>
+                        <div class="check-circle checked" onclick="toggleCheck(this)"></div>
+                    </div>
+                </div>
+
+                <div class="activity-item">
+                    <div class="activity-emoji">&#127863;</div>
+                    <div class="activity-body">
+                        <div class="activity-name">Wine tasting</div>
+                        <div class="activity-meta">Added by Jamie &middot; Food</div>
+                    </div>
+                    <div class="activity-right">
+                        <button class="heart-btn liked" onclick="toggleHeart(this)">&#10084;&#65039; 2</button>
+                        <div class="check-circle checked" onclick="toggleCheck(this)"></div>
+                    </div>
+                </div>
+
+                <div class="activity-item">
+                    <div class="activity-emoji">&#128247;</div>
+                    <div class="activity-body">
+                        <div class="activity-name">Photo walk around city</div>
+                        <div class="activity-meta">Added by you &middot; Outdoors</div>
+                    </div>
+                    <div class="activity-right">
+                        <button class="heart-btn" onclick="toggleHeart(this)">&#129293; 1</button>
+                        <div class="check-circle checked" onclick="toggleCheck(this)"></div>
+                    </div>
+                </div>
+
+                <div class="activity-item proposed">
+                    <div class="activity-emoji">&#127914;</div>
+                    <div class="activity-body">
+                        <div class="activity-name">Jazz bar after dinner</div>
+                        <div class="activity-meta">Proposed by Jamie &middot; Culture</div>
+                    </div>
+                    <div class="activity-right">
+                        <button class="heart-btn" onclick="toggleHeart(this)">&#129293; 0</button>
+                        <div class="check-circle" onclick="toggleCheck(this)"></div>
+                    </div>
+                </div>
+
+                <button class="add-btn" onclick="openAddActivity()">+ Add an activity</button>
+                <div class="pad-bottom"></div>
+            </div>
+
+        </div><!-- end .app -->
+
+        <!-- Tab Bar -->
+        <div class="tab-bar">
+            <div class="tab active" onclick="switchTab('overview')" id="tab-overview">
+                <div class="tab-notif"></div>
+                <div class="tab-icon">&#128198;</div>
+                <div class="tab-label">Plan</div>
+            </div>
+            <div class="tab" onclick="switchTab('when')" id="tab-when">
+                <div class="tab-notif"></div>
+                <div class="tab-icon">&#9200;</div>
+                <div class="tab-label">When</div>
+            </div>
+            <div class="tab has-notif" onclick="switchTab('where')" id="tab-where">
+                <div class="tab-notif"></div>
+                <div class="tab-icon">&#128205;</div>
+                <div class="tab-label">Where</div>
+            </div>
+            <div class="tab" onclick="switchTab('what')" id="tab-what">
+                <div class="tab-notif"></div>
+                <div class="tab-icon">&#10024;</div>
+                <div class="tab-label">What</div>
+            </div>
+        </div>
+
+        <!-- Share Sheet -->
+        <div class="modal-overlay" id="share-overlay" onclick="closeShare()"></div>
+        <div class="bottom-sheet" id="share-sheet">
+            <div class="sheet-handle"></div>
+            <div class="sheet-title">Invite your partner</div>
+            <div class="share-link-box">
+                <div class="share-link-url">nous.app/date/spring-2026-mia-jamie</div>
+                <button class="copy-btn" onclick="copyLink()">Copy</button>
+            </div>
+            <div class="share-options">
+                <div class="share-opt" onclick="shareAction('Message')">
+                    <span class="share-opt-icon">&#128172;</span>
+                    <span class="share-opt-name">Message</span>
+                </div>
+                <div class="share-opt" onclick="shareAction('Email')">
+                    <span class="share-opt-icon">&#128140;</span>
+                    <span class="share-opt-name">Email</span>
+                </div>
+                <div class="share-opt" onclick="shareAction('WhatsApp')">
+                    <span class="share-opt-icon">&#128241;</span>
+                    <span class="share-opt-name">WhatsApp</span>
+                </div>
+                <div class="share-opt" onclick="copyLink()">
+                    <span class="share-opt-icon">&#128203;</span>
+                    <span class="share-opt-name">Copy link</span>
+                </div>
+            </div>
+            <div class="share-note">Anyone with the link can view &amp; co-edit this plan</div>
+        </div>
+
+        <!-- Add Location Sheet -->
+        <div class="modal-overlay" id="add-loc-overlay" onclick="closeAddLocation()"></div>
+        <div class="bottom-sheet" id="add-loc-sheet">
+            <div class="sheet-handle"></div>
+            <div class="sheet-title">Suggest a place</div>
+            <input class="input-field" placeholder="Place name" />
+            <input class="input-field" placeholder="Neighborhood or address" />
+            <input class="input-field" placeholder="Why you'd love it... (optional)" />
+            <button class="btn-primary" onclick="addLocation()">Add suggestion</button>
+        </div>
+
+        <!-- Add Activity Sheet -->
+        <div class="modal-overlay" id="add-act-overlay" onclick="closeAddActivity()"></div>
+        <div class="bottom-sheet" id="add-act-sheet">
+            <div class="sheet-handle"></div>
+            <div class="sheet-title">Add an activity</div>
+            <input class="input-field" placeholder="What do you want to do?" />
+            <input class="input-field" placeholder="Category (Food, Outdoors, Culture...)" />
+            <button class="btn-primary" onclick="addActivity()">Add to plan</button>
+        </div>
+
+        <!-- Toast -->
+        <div class="toast" id="toast"></div>
+
+    </div><!-- end .phone -->
+
+    <script>
+        // ---- Tab navigation ----
+        function switchTab(name) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.getElementById('page-' + name).classList.add('active');
+            const tab = document.getElementById('tab-' + name);
+            tab.classList.add('active');
+            tab.classList.remove('has-notif');
+        }
+
+        // ---- Share sheet ----
+        function openShare() {
+            document.getElementById('share-overlay').classList.add('open');
+            document.getElementById('share-sheet').classList.add('open');
+        }
+
+        function closeShare() {
+            document.getElementById('share-overlay').classList.remove('open');
+            document.getElementById('share-sheet').classList.remove('open');
+        }
+
+        function copyLink() {
+            closeShare();
+            showToast('Link copied to clipboard');
+        }
+
+        function shareAction(app) {
+            closeShare();
+            showToast('Opening ' + app + '...');
+        }
+
+        // ---- Add Location sheet ----
+        function openAddLocation() {
+            document.getElementById('add-loc-overlay').classList.add('open');
+            document.getElementById('add-loc-sheet').classList.add('open');
+        }
+
+        function closeAddLocation() {
+            document.getElementById('add-loc-overlay').classList.remove('open');
+            document.getElementById('add-loc-sheet').classList.remove('open');
+        }
+
+        function addLocation() {
+            closeAddLocation();
+            showToast('Place suggestion added');
+        }
+
+        // ---- Add Activity sheet ----
+        function openAddActivity() {
+            document.getElementById('add-act-overlay').classList.add('open');
+            document.getElementById('add-act-sheet').classList.add('open');
+        }
+
+        function closeAddActivity() {
+            document.getElementById('add-act-overlay').classList.remove('open');
+            document.getElementById('add-act-sheet').classList.remove('open');
+        }
+
+        function addActivity() {
+            closeAddActivity();
+            showToast('Activity added to plan');
+        }
+
+        // ---- Location voting ----
+        function voteLocation(btn, type) {
+            const parent = btn.closest('.vote-buttons');
+            parent.querySelectorAll('.vote-btn').forEach(b => b.classList.remove('yes', 'no'));
+            btn.classList.add(type);
+            if (type === 'yes') showToast('\u2764\ufe0f Voted yes!');
+            else showToast('Passed on this one');
+        }
+
+        // ---- Activity heart ----
+        function toggleHeart(btn) {
+            const liked = btn.classList.contains('liked');
+            const num = parseInt(btn.textContent.match(/\d+/)[0]);
+            if (liked) {
+                btn.classList.remove('liked');
+                btn.innerHTML = '\u{1F90D} ' + Math.max(0, num - 1);
+            } else {
+                btn.classList.add('liked');
+                btn.innerHTML = '\u2764\uFE0F ' + (num + 1);
+            }
+        }
+
+        // ---- Activity check ----
+        function toggleCheck(el) {
+            el.classList.toggle('checked');
+        }
+
+        // ---- Time slot ----
+        function selectTime(slot) {
+            document.querySelectorAll('.time-slot').forEach(s => s.classList.remove('selected'));
+            slot.classList.add('selected');
+            showToast('Time preference saved');
+        }
+
+        // ---- Category filter ----
+        function filterCat(chip) {
+            document.querySelectorAll('.cat-chip').forEach(c => c.classList.remove('active'));
+            chip.classList.add('active');
+        }
+
+        // ---- Toast ----
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.classList.add('show');
+            clearTimeout(toast._timer);
+            toast._timer = setTimeout(() => toast.classList.remove('show'), 2200);
+        }
+
+        // ---- Calendar ----
+        const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+        const DAY_LABELS = ['Su','Mo','Tu','We','Th','Fr','Sa'];
+        let calYear = 2026, calMonth = 2;
+        let selectedDay = 22;
+        const partnerVotes = [19, 21, 22];
+
+        function renderCalendar() {
+            document.getElementById('cal-month-label').textContent = MONTHS[calMonth] + ' ' + calYear;
+            const grid = document.getElementById('cal-grid');
+            grid.innerHTML = '';
+
+            DAY_LABELS.forEach(d => {
+                const el = document.createElement('div');
+                el.className = 'cal-day-label';
+                el.textContent = d;
+                grid.appendChild(el);
+            });
+
+            const firstDay = new Date(calYear, calMonth, 1).getDay();
+            const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+            const today = new Date();
+
+            for (let i = 0; i < firstDay; i++) {
+                const el = document.createElement('div');
+                el.className = 'cal-day empty';
+                grid.appendChild(el);
+            }
+
+            for (let d = 1; d <= daysInMonth; d++) {
+                const el = document.createElement('div');
+                el.className = 'cal-day';
+                el.textContent = d;
+
+                const date = new Date(calYear, calMonth, d);
+                const todayDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+                if (date < todayDate) {
+                    el.classList.add('past');
+                } else if (calYear === today.getFullYear() && calMonth === today.getMonth() && d === today.getDate()) {
+                    el.classList.add('today');
+                }
+
+                if (d === selectedDay && calYear === 2026 && calMonth === 2) {
+                    el.classList.add('selected');
+                } else if (partnerVotes.includes(d) && calYear === 2026 && calMonth === 2 && d !== selectedDay) {
+                    el.classList.add('partner-vote');
+                }
+
+                el.onclick = () => {
+                    grid.querySelectorAll('.cal-day').forEach(c => c.classList.remove('selected'));
+                    el.classList.add('selected');
+                    selectedDay = d;
+                    showToast(MONTHS[calMonth] + ' ' + d + ' selected');
+                };
+
+                grid.appendChild(el);
+            }
+        }
+
+        function prevMonth() {
+            if (calMonth === 0) { calMonth = 11; calYear--; } else calMonth--;
+            renderCalendar();
+        }
+
+        function nextMonth() {
+            if (calMonth === 11) { calMonth = 0; calYear++; } else calMonth++;
+            renderCalendar();
+        }
+
+        // Init
+        renderCalendar();
+        setTimeout(() => {
+            document.getElementById('progress-fill').style.width = '55%';
+        }, 400);
+    </script>
+</body>
+</html>

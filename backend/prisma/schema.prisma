@@ -1,0 +1,122 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id         String       @id // Clerk user ID
+  email      String       @unique
+  name       String
+  createdAt  DateTime     @default(now())
+  plans      DatePlan[]   @relation("Creator")
+  memberships PlanMember[]
+  votes      Vote[]
+  activities Activity[]
+  locations  Location[]
+  feedItems  FeedItem[]
+}
+
+model DatePlan {
+  id                  String       @id @default(cuid())
+  title               String
+  occasion            String?
+  status              String       @default("planning")   // planning | confirmed
+  confirmedDate       DateTime?
+  confirmedTimeSlot   String?      // afternoon | evening | night | allday
+  confirmedLocationId String?
+  confirmedAt         DateTime?
+  shareToken          String       @unique @default(cuid())
+  createdById         String
+  creator             User         @relation("Creator", fields: [createdById], references: [id])
+  members             PlanMember[]
+  whenOptions         WhenOption[]
+  locations           Location[]
+  activities          Activity[]
+  feedItems           FeedItem[]
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+}
+
+model PlanMember {
+  id       String   @id @default(cuid())
+  planId   String
+  plan     DatePlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User     @relation(fields: [userId], references: [id])
+  role     String   @default("member")
+  joinedAt DateTime @default(now())
+
+  @@unique([planId, userId])
+}
+
+model WhenOption {
+  id       String   @id @default(cuid())
+  planId   String
+  plan     DatePlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  date     DateTime?
+  timeSlot String?  // afternoon | evening | night | allday
+  votes    Vote[]
+  createdAt DateTime @default(now())
+}
+
+model Location {
+  id           String   @id @default(cuid())
+  planId       String
+  plan         DatePlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  name         String
+  meta         String?
+  emoji        String   @default("📍")
+  gradientFrom String   @default("#E8956D")
+  gradientTo   String   @default("#C4622D")
+  addedById    String
+  addedBy      User     @relation(fields: [addedById], references: [id])
+  votes        Vote[]
+  createdAt    DateTime @default(now())
+}
+
+model Activity {
+  id        String   @id @default(cuid())
+  planId    String
+  plan      DatePlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  name      String
+  emoji     String   @default("✨")
+  category  String   @default("fun")
+  addedById String
+  addedBy   User     @relation(fields: [addedById], references: [id])
+  checked   Boolean  @default(false)
+  votes     Vote[]
+  createdAt DateTime @default(now())
+}
+
+model Vote {
+  id           String      @id @default(cuid())
+  userId       String
+  user         User        @relation(fields: [userId], references: [id])
+  whenOptionId String?
+  whenOption   WhenOption? @relation(fields: [whenOptionId], references: [id], onDelete: Cascade)
+  locationId   String?
+  location     Location?   @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  activityId   String?
+  activity     Activity?   @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  value        String      // yes | no | heart
+  createdAt    DateTime    @default(now())
+
+  @@unique([userId, whenOptionId])
+  @@unique([userId, locationId])
+  @@unique([userId, activityId])
+}
+
+model FeedItem {
+  id        String   @id @default(cuid())
+  planId    String
+  plan      DatePlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  action    String
+  details   String?
+  createdAt DateTime @default(now())
+}
