@@ -5,7 +5,7 @@ import { requireAuth, AuthedRequest } from '../middleware/clerkAuth'
 const router = Router({ mergeParams: true })
 
 // POST /api/plans/:planId/votes
-router.post('/', requireAuth, async (req, res: Response) => {
+router.post('/votes', requireAuth, async (req, res: Response) => {
   const { userId } = req as AuthedRequest
   const { planId } = req.params
   const { whenOptionId, locationId, activityId, value } = req.body as {
