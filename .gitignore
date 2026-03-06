@@ -1,1 +1,10 @@
 node_modules
+
+# Local env files
+.env
+.env.local
+frontend/.env.local
+
+# SQLite (dev only — production uses PostgreSQL)
+backend/prisma/dev.db
+backend/prisma/dev.db-journal

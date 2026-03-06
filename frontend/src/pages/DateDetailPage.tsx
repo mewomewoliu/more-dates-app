@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { fetchPlan, updatePlan, deletePlan, addLocation, addActivity, deleteLocation, deleteActivity, castVote } from '../lib/api'
 import { DatePlan } from '../types'
@@ -25,6 +25,59 @@ const ACTIVITY_EMOJIS: Record<string, string> = {
   food: '🍽️', outdoors: '🌿', culture: '🎭', fun: '🎲', romantic: '💕', other: '✨',
 }
 
+const CONFETTI_ITEMS = Array.from({ length: 36 }, (_, i) => ({
+  left: `${(i * 11.3) % 100}%`,
+  delay: `${(i * 0.06) % 1}s`,
+  dur: `${1.0 + (i * 0.09) % 0.8}s`,
+  color: ['#E8956D','#E8506D','#8BAF9E','#C4A882','#F0E6D6','#C4622D','#B8A4D8'][i % 7],
+  size: 5 + (i % 5) * 2,
+  rotate: (i * 53) % 360,
+}))
+
+function CelebrationBurst({ onDone }: { onDone: () => void }) {
+  useEffect(() => {
+    const t = setTimeout(onDone, 3200)
+    return () => clearTimeout(t)
+  }, [onDone])
+
+  return (
+    <div className="celeb-overlay">
+      {CONFETTI_ITEMS.map((c, i) => (
+        <div
+          key={i}
+          className="celeb-confetti"
+          style={{
+            left: c.left,
+            animationDelay: c.delay,
+            animationDuration: c.dur,
+            width: c.size,
+            height: c.size,
+            background: c.color,
+            transform: `rotate(${c.rotate}deg)`,
+          }}
+        />
+      ))}
+      {['💕','✨','🌹','💫','❤️','🎉'].map((h, i) => (
+        <div
+          key={`h${i}`}
+          className="celeb-heart"
+          style={{
+            left: `${15 + i * 14}%`,
+            animationDelay: `${i * 0.12}s`,
+            fontSize: 20 + (i % 3) * 6,
+          }}
+        >
+          {h}
+        </div>
+      ))}
+      <div className="celeb-text">
+        <div className="celeb-text-title">It's a date!</div>
+        <div className="celeb-text-sub">Can't wait 💕</div>
+      </div>
+    </div>
+  )
+}
+
 interface Props {
   planId: string
   currentUserId: string
@@ -34,6 +87,8 @@ interface Props {
 export default function DateDetailPage({ planId, currentUserId, onBack }: Props) {
   const { showToast } = useToast()
   const qc = useQueryClient()
+  const [showCelebration, setShowCelebration] = useState(false)
+  const settingDate = useRef(false)
 
   const { data: plan, isLoading } = useQuery<DatePlan>({
     queryKey: ['plan', planId],
@@ -61,11 +116,19 @@ export default function DateDetailPage({ planId, currentUserId, onBack }: Props)
   const [actCategory, setActCategory] = useState('fun')
 
   const updateMutation = useMutation({
-    mutationFn: (data: Parameters<typeof updatePlan>[1]) => updatePlan(planId, data),
+    mutationFn: (data: Parameters<typeof updatePlan>[1]) => {
+      if (data.confirmedDate) settingDate.current = true
+      return updatePlan(planId, data)
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['plan', planId] })
       qc.invalidateQueries({ queryKey: ['ongoing-plans'] })
-      showToast('Saved ✓')
+      if (settingDate.current) {
+        setShowCelebration(true)
+        settingDate.current = false
+      } else {
+        showToast('Saved ✓')
+      }
       setEditingDate(false)
       setEditingTitle(false)
     },
@@ -166,6 +229,7 @@ export default function DateDetailPage({ planId, currentUserId, onBack }: Props)
 
   return (
     <div className="detail-root">
+      {showCelebration && <CelebrationBurst onDone={() => setShowCelebration(false)} />}
       {/* Back + actions */}
       <div className="detail-topbar">
         <button className="flow-back-btn" onClick={onBack}>←</button>

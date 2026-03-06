@@ -6,6 +6,36 @@ interface Props {
   onSelectPlan: (id: string) => void
 }
 
+function MemoryDashboard({ plans }: { plans: DatePlan[] }) {
+  const totalDates = plans.length
+  const uniquePeople = new Set(plans.flatMap(p => p.members?.map(m => m.userId) ?? [])).size
+  const uniquePlaces = new Set(plans.flatMap(p => p.locations?.map(l => l.name) ?? [])).size
+  const totalActivities = plans.reduce((sum, p) => sum + (p.activities?.length ?? 0), 0)
+
+  const stats = [
+    { emoji: '💕', value: totalDates, label: 'Dates lived' },
+    { emoji: '👥', value: uniquePeople, label: 'People met' },
+    { emoji: '📍', value: uniquePlaces, label: 'Places explored' },
+    { emoji: '✨', value: totalActivities, label: 'Things done' },
+  ]
+
+  return (
+    <div className="mem-dashboard">
+      <div className="mem-dashboard-glow" />
+      <div className="mem-dashboard-label">Your love in numbers</div>
+      <div className="mem-stats-grid">
+        {stats.map((s, i) => (
+          <div key={i} className="mem-stat-card" style={{ animationDelay: `${i * 0.07}s` }}>
+            <div className="mem-stat-emoji">{s.emoji}</div>
+            <div className="mem-stat-value">{s.value}</div>
+            <div className="mem-stat-label">{s.label}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function MemoriesPage({ onSelectPlan }: Props) {
   const { data: plans = [], isLoading } = useQuery<DatePlan[]>({
     queryKey: ['past-plans'],
@@ -19,6 +49,8 @@ export default function MemoriesPage({ onSelectPlan }: Props) {
         <div className="page-eyebrow">Look back</div>
         <div className="page-title">Memories</div>
       </div>
+
+      {!isLoading && <MemoryDashboard plans={plans} />}
 
       {isLoading && <div className="list-empty">Loading…</div>}
 
