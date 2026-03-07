@@ -39,7 +39,7 @@ export default function MainPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#07060A', display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative' }}>
+    <div className="phone-wrapper">
       <FloatingHearts />
       <PhoneFrame>
         <div className="app">

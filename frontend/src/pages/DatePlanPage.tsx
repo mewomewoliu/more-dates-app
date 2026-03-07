@@ -80,7 +80,7 @@ export default function DatePlanPage() {
 
   if (isLoading) {
     return (
-      <div style={{ minHeight: '100vh', background: '#07060A', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div className="phone-wrapper">
         <PhoneFrame>
           <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 14 }}>
             Loading...
@@ -92,7 +92,7 @@ export default function DatePlanPage() {
 
   if (error || !plan) {
     return (
-      <div style={{ minHeight: '100vh', background: '#07060A', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div className="phone-wrapper">
         <PhoneFrame>
           <div style={{ padding: 24, color: 'var(--text-muted)', fontSize: 14 }}>
             Plan not found. <span style={{ color: 'var(--accent)', cursor: 'pointer' }} onClick={() => navigate('/dashboard')}>Go back</span>
@@ -106,7 +106,7 @@ export default function DatePlanPage() {
   const shareUrl = `${window.location.origin}/join/${plan.shareToken}`
 
   return (
-    <div style={{ minHeight: '100vh', background: '#07060A', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+    <div className="phone-wrapper">
       <PhoneFrame>
         <div className="app">
           {/* Pages */}
