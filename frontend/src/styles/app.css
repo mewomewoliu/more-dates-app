@@ -22,13 +22,17 @@
   -webkit-font-smoothing: antialiased;
 }
 
+
+
 body {
   background: #07060A;
-  display: flex;
-  justify-content: center;
-  align-items: center;
   min-height: 100vh;
   font-family: 'DM Sans', sans-serif;
+}
+
+#root {
+  width: 100%;
+  min-height: 100vh;
 }
 
 /* ---- Phone Frame ---- */
