@@ -1724,51 +1724,101 @@ body::before {
   letter-spacing: 1px;
 }
 
+
 /* ==================
    RESPONSIVE LAYOUT
 ================== */
 
-/* Desktop wrapper — centers the phone frame */
+/* Wrapper — just a positioning context, no flex-centering */
 .phone-wrapper {
   min-height: 100vh;
   background: #07060A;
-  display: flex;
-  justify-content: center;
-  align-items: center;
   position: relative;
 }
 
-/* Mobile: fill the entire screen, drop the decorative frame */
-@media (max-width: 639px) {
-  body {
-    align-items: flex-start;
-    justify-content: flex-start;
-  }
+/* ---- Both mobile and desktop: phone fills viewport ---- */
+.phone {
+  width: 100% !important;
+  height: 100vh !important;
+  height: 100dvh !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
 
+.phone::after {
+  display: none !important;
+}
+
+.app {
+  height: calc(100vh - 82px) !important;
+  height: calc(100dvh - 82px) !important;
+}
+
+/* ---- Desktop (≥ 640px): constrain and center content ---- */
+@media (min-width: 640px) {
   .phone-wrapper {
-    align-items: flex-start;
     min-height: 100vh;
     min-height: 100dvh;
   }
 
-  .phone {
-    width: 100%;
-    height: 100vh;
-    height: 100dvh;
-    border-radius: 0;
-    box-shadow: none;
+  /* Center scrollable page content to a readable max-width */
+  .page {
+    padding-left: max(24px, calc((100% - 720px) / 2));
+    padding-right: max(24px, calc((100% - 720px) / 2));
   }
 
-  .phone::after {
-    border-radius: 0;
+  /* Detail page centering */
+  .detail-root {
+    padding-left: max(0px, calc((100% - 720px) / 2));
+    padding-right: max(0px, calc((100% - 720px) / 2));
+  }
+
+  /* Flow (create plan) centering */
+  .flow-root {
+    max-width: 720px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  /* Tab bar: center items on wide screens */
+  .tab-bar {
+    padding-top: 10px;
+    justify-content: center;
+    gap: 0;
+  }
+
+  .tab-bar .tab {
+    max-width: 120px;
+  }
+
+  .tab-bar .tab-create {
+    max-width: 80px;
+  }
+
+  /* Dashboard and auth pages */
+  .dashboard-inner {
+    max-width: 600px;
+    margin: 0 auto;
+    width: 100%;
+  }
+}
+
+/* ---- Mobile (< 640px): safe area for notch/home bar ---- */
+@media (max-width: 639px) {
+  .phone-wrapper {
+    min-height: 100dvh;
+  }
+
+  .phone {
+    height: 100vh !important;
+    height: 100dvh !important;
   }
 
   .app {
-    height: calc(100vh - 82px);
-    height: calc(100dvh - 82px);
+    height: calc(100vh - 82px) !important;
+    height: calc(100dvh - 82px) !important;
   }
 
-  /* Give dashboard and auth pages safe padding on small screens */
   .dashboard-bg {
     padding-top: env(safe-area-inset-top, 16px);
   }
