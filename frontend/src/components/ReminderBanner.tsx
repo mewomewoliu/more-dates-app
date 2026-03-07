@@ -16,13 +16,13 @@ function getDaysUntil(dateStr: string) {
 
 export default function ReminderBanner({ plans, onSelectPlan }: Props) {
   const todayPlan = plans.find(p => p.confirmedDate && getDaysUntil(p.confirmedDate) === 0)
-  const tomorrowPlan = !todayPlan && plans.find(p => p.confirmedDate && getDaysUntil(p.confirmedDate) === 1)
-  const soonPlan = !todayPlan && !tomorrowPlan && plans.find(p => {
+  const tomorrowPlan = todayPlan ? undefined : plans.find(p => p.confirmedDate && getDaysUntil(p.confirmedDate) === 1)
+  const soonPlan = todayPlan || tomorrowPlan ? undefined : plans.find(p => {
     const d = p.confirmedDate ? getDaysUntil(p.confirmedDate) : null
     return d !== null && d > 1 && d <= 3
   })
 
-  const plan = todayPlan || tomorrowPlan || soonPlan
+  const plan = todayPlan ?? tomorrowPlan ?? soonPlan
   const days = plan?.confirmedDate ? getDaysUntil(plan.confirmedDate) : null
 
   // Browser notification for today's date
