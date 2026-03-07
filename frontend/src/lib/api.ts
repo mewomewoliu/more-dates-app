@@ -15,6 +15,9 @@ export function setAuthToken(getToken: () => Promise<string | null>) {
 }
 
 // ---- Date Plans ----
+export const fetchPlans = () => api.get('/plans').then((r) => r.data)
+export const createPlan = (data: { title: string }) =>
+  api.post('/plans/complete', data).then((r) => r.data)
 export const fetchOngoingPlans = () =>
   api.get('/plans?timeframe=upcoming').then((r) => r.data)
 export const fetchPastPlans = () =>

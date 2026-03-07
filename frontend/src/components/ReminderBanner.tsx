@@ -22,7 +22,7 @@ export default function ReminderBanner({ plans, onSelectPlan }: Props) {
     return d !== null && d > 1 && d <= 3
   })
 
-  const plan = todayPlan ?? tomorrowPlan ?? soonPlan
+  const plan = todayPlan || tomorrowPlan || soonPlan
   const days = plan?.confirmedDate ? getDaysUntil(plan.confirmedDate) : null
 
   // Browser notification for today's date

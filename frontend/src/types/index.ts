@@ -87,6 +87,7 @@ export interface DatePlan {
   updatedAt: string
 }
 
+export type TabName = 'overview' | 'when' | 'where' | 'what'
 export type MainTab = 'ongoing' | 'create' | 'memories'
 
 export interface PlanDraft {

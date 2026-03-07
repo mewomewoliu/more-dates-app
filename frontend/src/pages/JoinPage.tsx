@@ -24,7 +24,7 @@ export default function JoinPage() {
           <div style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: 32, color: 'var(--text)', marginBottom: 24 }}>
             Sign in to join<br />the date plan
           </div>
-          <SignIn redirectUrl={`/join/${token}`} />
+          <SignIn fallbackRedirectUrl={`/join/${token}`} />
         </div>
       </div>
     )

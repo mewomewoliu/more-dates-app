@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import Calendar from '../components/Calendar'
 import { DatePlan } from '../types'
@@ -43,11 +42,8 @@ export default function WhenPage({ plan, currentUserId }: Props) {
 
   const voteTimeMutation = useMutation({
     mutationFn: async (timeSlot: string) => {
-      // Find or create the when option for this time slot
-      let option = plan.whenOptions.find(o => o.timeSlot === timeSlot)
-      if (!option) {
-        option = await addWhenOption(plan.id, { timeSlot })
-      }
+      const existing = plan.whenOptions.find(o => o.timeSlot === timeSlot)
+      const option = existing ?? await addWhenOption(plan.id, { timeSlot })
       return castVote(plan.id, { whenOptionId: option.id, value: 'yes' })
     },
     onSuccess: () => {
