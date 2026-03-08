@@ -20,31 +20,32 @@ const PLAN_INCLUDE = {
   },
 }
 
-// GET /api/plans?timeframe=upcoming|past — list confirmed plans
+// GET /api/plans?timeframe=upcoming|past — list plans for the current user
 router.get('/', requireAuth, async (req, res: Response) => {
   try {
     const { userId } = req as AuthedRequest
     const { timeframe } = req.query
     const now = new Date()
 
-    const dateFilter =
+    // upcoming = plans with a future date OR no date yet (still planning)
+    // past     = plans with a confirmed date in the past
+    const timeframeWhere =
       timeframe === 'upcoming'
-        ? { gte: now }
+        ? { OR: [{ confirmedDate: { gte: now } }, { confirmedDate: null }] }
         : timeframe === 'past'
-        ? { lt: now }
-        : undefined
+        ? { confirmedDate: { lt: now } }
+        : {}
 
     const plans = await prisma.datePlan.findMany({
       where: {
         members: { some: { userId } },
-        status: 'confirmed',
-        ...(dateFilter ? { confirmedDate: dateFilter } : {}),
+        ...timeframeWhere,
       },
       include: { creator: true, members: { include: { user: true } }, locations: true, activities: true },
       orderBy:
         timeframe === 'past'
           ? { confirmedDate: 'desc' }
-          : { confirmedDate: 'asc' },
+          : { createdAt: 'desc' },
     })
     res.json(plans)
   } catch (err) {
@@ -157,6 +158,50 @@ router.post('/complete', requireAuth, async (req, res: Response) => {
   }
 })
 
+// GET /api/plans/preview/:token — public, no auth needed
+router.get('/preview/:token', async (req, res: Response) => {
+  try {
+    const plan = await prisma.datePlan.findUnique({
+      where: { shareToken: req.params.token },
+      select: {
+        id: true,
+        title: true,
+        confirmedDate: true,
+        confirmedTimeSlot: true,
+        locations: { select: { name: true, emoji: true, gradientFrom: true, gradientTo: true } },
+        members: { include: { user: { select: { name: true } } } },
+      },
+    })
+    if (!plan) { res.status(404).json({ error: 'Invalid share link' }); return }
+    res.json(plan)
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch plan preview', detail: String(err) })
+  }
+})
+
+// GET /api/plans/join/:token — must be before /:id
+router.get('/join/:token', requireAuth, async (req, res: Response) => {
+  try {
+    const { userId } = req as AuthedRequest
+    const plan = await prisma.datePlan.findUnique({
+      where: { shareToken: req.params.token },
+    })
+    if (!plan) { res.status(404).json({ error: 'Invalid share link' }); return }
+
+    await prisma.planMember.upsert({
+      where: { planId_userId: { planId: plan.id, userId } },
+      create: { planId: plan.id, userId, role: 'member' },
+      update: {},
+    })
+    await prisma.feedItem.create({
+      data: { planId: plan.id, userId, action: 'joined_plan' },
+    })
+    res.json({ planId: plan.id })
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to join plan', detail: String(err) })
+  }
+})
+
 // GET /api/plans/:id
 router.get('/:id', requireAuth, async (req, res: Response) => {
   try {
@@ -171,25 +216,6 @@ router.get('/:id', requireAuth, async (req, res: Response) => {
     console.error('[GET /plans/:id] error:', err)
     res.status(500).json({ error: 'Failed to fetch plan', detail: String(err) })
   }
-})
-
-// GET /api/plans/join/:token
-router.get('/join/:token', requireAuth, async (req, res: Response) => {
-  const { userId } = req as AuthedRequest
-  const plan = await prisma.datePlan.findUnique({
-    where: { shareToken: req.params.token },
-  })
-  if (!plan) { res.status(404).json({ error: 'Invalid share link' }); return }
-
-  await prisma.planMember.upsert({
-    where: { planId_userId: { planId: plan.id, userId } },
-    create: { planId: plan.id, userId, role: 'member' },
-    update: {},
-  })
-  await prisma.feedItem.create({
-    data: { planId: plan.id, userId, action: 'joined_plan' },
-  })
-  res.json({ planId: plan.id })
 })
 
 // PATCH /api/plans/:id — edit an ongoing plan

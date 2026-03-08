@@ -6,6 +6,8 @@ import { ToastProvider } from './contexts/ToastContext'
 import { setAuthToken } from './lib/api'
 import MainPage from './pages/MainPage'
 import JoinPage from './pages/JoinPage'
+import DatePlanPage from './pages/DatePlanPage'
+import ProfilePage from './pages/ProfilePage'
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
@@ -138,6 +140,22 @@ export default function App() {
                   element={
                     <ProtectedRoute>
                       <MainPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/plan/:id"
+                  element={
+                    <ProtectedRoute>
+                      <DatePlanPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/profile"
+                  element={
+                    <ProtectedRoute>
+                      <ProfilePage />
                     </ProtectedRoute>
                   }
                 />

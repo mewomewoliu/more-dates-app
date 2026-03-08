@@ -42,6 +42,13 @@ export const updatePlan = (
 export const deletePlan = (id: string) => api.delete(`/plans/${id}`)
 export const joinPlan = (token: string) =>
   api.get(`/plans/join/${token}`).then((r) => r.data)
+export const fetchPlanPreview = (token: string) =>
+  api.get(`/plans/preview/${token}`).then((r) => r.data)
+
+// ---- User profile ----
+export const fetchMe = () => api.get('/users/me').then((r) => r.data)
+export const updateMe = (data: { name: string }) =>
+  api.patch('/users/me', data).then((r) => r.data)
 
 // ---- Locations ----
 export const addLocation = (

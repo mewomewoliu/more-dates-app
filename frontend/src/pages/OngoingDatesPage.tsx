@@ -1,4 +1,6 @@
 import React from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useUser } from '@clerk/react'
 import { useQuery } from '@tanstack/react-query'
 import { fetchOngoingPlans } from '../lib/api'
 import { DatePlan } from '../types'
@@ -84,17 +86,26 @@ interface Props {
 }
 
 export default function OngoingDatesPage({ onSelectPlan }: Props) {
+  const navigate = useNavigate()
+  const { user } = useUser()
   const { data: plans = [], isLoading } = useQuery<DatePlan[]>({
     queryKey: ['ongoing-plans'],
     queryFn: fetchOngoingPlans,
     refetchInterval: 60_000,
   })
 
+  const initials = (user?.firstName ?? user?.primaryEmailAddress?.emailAddress ?? '?')[0]?.toUpperCase()
+
   return (
     <div className="page active">
-      <div className="page-header">
-        <div className="page-eyebrow">Coming up</div>
-        <div className="page-title">Ongoing<br />dates</div>
+      <div className="page-header" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+        <div>
+          <div className="page-eyebrow">Coming up</div>
+          <div className="page-title">Ongoing<br />dates</div>
+        </div>
+        <button className="profile-nav-btn" onClick={() => navigate('/profile')} title="Account">
+          {initials}
+        </button>
       </div>
 
       {plans.length > 0 && (

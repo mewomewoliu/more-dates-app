@@ -14,11 +14,21 @@ const httpServer = createServer(app)
 
 const FRONTEND_URL = process.env.FRONTEND_URL ?? 'http://localhost:5173'
 
-const io = new Server(httpServer, {
-  cors: { origin: FRONTEND_URL, credentials: true },
-})
+// Allow the configured frontend URL plus any Vercel preview deployment URLs
+function isAllowedOrigin(origin: string | undefined): boolean {
+  if (!origin) return false
+  if (origin === FRONTEND_URL) return true
+  if (origin === 'http://localhost:5173' || origin === 'http://localhost:5174') return true
+  // Allow all *.vercel.app preview URLs for the same project
+  if (/^https:\/\/more-dates-app[^.]*\.vercel\.app$/.test(origin)) return true
+  return false
+}
 
-app.use(cors({ origin: FRONTEND_URL, credentials: true }))
+const corsOptions = { origin: isAllowedOrigin, credentials: true }
+
+const io = new Server(httpServer, { cors: corsOptions })
+
+app.use(cors(corsOptions))
 app.use(express.json())
 app.use(clerkMiddleware())
 
